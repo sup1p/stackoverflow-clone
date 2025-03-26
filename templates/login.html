@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - Stack Overflow Clone{% endblock %}
+
+{% block content %}
+<h2>Login</h2>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-info">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+<form method="POST" action="/user/login">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="email" class="form-label">Email:</label>
+        <input type="text" class="form-control" id="email" name="email">
+    </div>
+    <div class="mb-3">
+        <label for="password" class="form-label">Password:</label>
+        <input type="password" class="form-control" id="password" name="password">
+    </div>
+    <button type="submit" class="btn btn-primary">Login</button>
+</form>
+{% endblock %}

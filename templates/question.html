@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ question.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ question.title }}</h2>
+    <p>{{ question.description }}</p>
+    <p><strong>Author:</strong> {{ question.author.username }} | <strong>Tags:</strong> {{ question.tags }}</p>
+
+    <hr>
+
+    <h3>Answers</h3>
+    {% if answers %}
+        <ul>
+            {% for answer in answers %}
+                <li>
+                    <strong>{{ answer.author.username }}:</strong> {{ answer.content }}
+                    <br><small>{{ answer.created_at }}</small>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No answers yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

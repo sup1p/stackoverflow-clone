@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Stack Overflow Clone{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between mb-4">
+        <h1>All Questions</h1>
+        <a href="/ask" class="btn btn-primary">Ask Question</a>
+    </div>
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-info">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Список вопросов -->
+    <div class="list-group">
+        {% for question in questions %}
+        <a href="/questions/{{ question.id }}" class="list-group-item list-group-item-action">
+            <h5>{{ question.title }}</h5>
+            <p>{{ question.description|truncatewords:20 }}</p>
+            <div><small>Asked by {{ question.author }} | {{ question.date }}</small></div>
+            <div>Tags:
+                {% for tag in question.tags.all %}
+                    <span class="badge bg-secondary">{{ tag.name }}</span>
+                {% endfor %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

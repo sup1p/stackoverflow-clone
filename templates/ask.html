@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Ask a Question - Stack Overflow Clone{% endblock %}
+
+{% block content %}
+<h2>Ask a Question</h2>
+<form method="POST" action="/ask/">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="title" class="form-label">Title:</label>
+        <input type="text" class="form-control" id="title" name="title">
+    </div>
+    <div class="mb-3">
+        <label for="description" class="form-label">Description:</label>
+        <textarea class="form-control" id="description" name="description" rows="5"></textarea>
+    </div>
+    <div class="mb-3">
+        <label for="tags" class="form-label">Tags (comma-separated):</label>
+        <input type="text" class="form-control" id="tags" name="tags">
+    </div>
+    <button type="submit" class="btn btn-primary">Submit Question</button>
+</form>
+{% endblock %}

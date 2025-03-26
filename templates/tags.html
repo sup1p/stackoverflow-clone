@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}Tags - Stack Overflow Clone{% endblock %}
+
+{% block content %}
+<h2>All Tags</h2>
+<div class="list-group">
+    {% for tag in tags %}
+    <a href="/tags/{{ tag.name }}" class="list-group-item list-group-item-action">{{ tag.name }} - {{ tag.description }}</a>
+    {% endfor %}
+</div>
+{% endblock %}
