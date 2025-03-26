@@ -4,24 +4,117 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>{{ question.title }}</h2>
-    <p>{{ question.description }}</p>
-    <p><strong>Author:</strong> {{ question.author.username }} | <strong>Tags:</strong> {{ question.tags }}</p>
+    <!-- Проверка на существование вопроса -->
+    {% if question %}
+        <h2>{{ question.title }}</h2>
+        <p>{{ question.description }}</p>
+        <p><strong>Author:</strong> {{ question.author.username }} |
+            <strong>Tags:</strong> {{ question.tags.all|join:", " }} |
+            <strong>Created at:</strong> {{ question.created_at }} |
+            <strong>Views:</strong> {{ question.views }}
+        </p>
 
-    <hr>
+        <!-- Score Display -->
+        <div>
+            <strong>Score: </strong>
+            <span id="question-score"
+                  style="
+                      {% if question.score > 0 %}color: green;
+                      {% elif question.score < 0 %}color: red;
+                      {% else %}color: black;
+                      {% endif %}
+                  ">
+                {{ question.score }}
+            </span>
+            <button id="upvote-btn" class="btn btn-success btn-sm">👍</button>
+            <button id="downvote-btn" class="btn btn-danger btn-sm">👎</button>
+        </div>
 
-    <h3>Answers</h3>
-    {% if answers %}
-        <ul>
-            {% for answer in answers %}
-                <li>
-                    <strong>{{ answer.author.username }}:</strong> {{ answer.content }}
-                    <br><small>{{ answer.created_at }}</small>
-                </li>
-            {% endfor %}
-        </ul>
+        <!-- Кнопки управления (если автор) -->
+        {% if user == question.author %}
+            <a href="{% url 'edit_question' question.id %}" class="btn btn-warning mt-2">Edit Question</a>
+            <form method="POST" action="{% url 'delete_question' question.id %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger mt-2">Delete Question</button>
+            </form>
+        {% endif %}
+
+        <hr>
+
+        <!-- Displaying Answers -->
+        <h3>Answers</h3>
+        {% if answers %}
+            <ul>
+                {% for answer in answers %}
+                    <li>
+                        <strong>{{ answer.author.username }}:</strong> {{ answer.content }}
+                        <br><small>{{ answer.created_at }}</small>
+
+                        {% if user == answer.author %}
+                            <!-- Кнопки редактирования и удаления ответа -->
+                            <a href="{% url 'edit_answer' answer.id %}" class="btn btn-warning btn-sm mt-1">Edit</a>
+                            <form method="POST" action="{% url 'delete_answer' answer.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm mt-1">Delete</button>
+                            </form>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No answers yet.</p>
+        {% endif %}
+
+        <hr>
+
+        <!-- Add Answer Form -->
+        {% if user.is_authenticated %}
+        <h3>Your Answer</h3>
+        <form method="post" action="{% url 'add_answer' question.id %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <textarea name="content" class="form-control" rows="5" placeholder="Write your answer here..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary mt-2">Submit Answer</button>
+        </form>
+        {% else %}
+            <p><a href="{% url 'login' %}">Login</a> to submit an answer.</p>
+        {% endif %}
     {% else %}
-        <p>No answers yet.</p>
+        <p>Question not found.</p>
     {% endif %}
 </div>
+
+<!-- JavaScript for Upvote/Downvote -->
+<script>
+    document.getElementById('upvote-btn').addEventListener('click', function() {
+        vote('upvote');
+    });
+
+    document.getElementById('downvote-btn').addEventListener('click', function() {
+        vote('downvote');
+    });
+
+    function vote(vote_type) {
+        fetch("{% url 'vote_question' question.id %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: new URLSearchParams({ "vote_type": vote_type })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const scoreElement = document.getElementById("question-score");
+            scoreElement.textContent = data.score;
+            if (data.score > 0) {
+                scoreElement.style.color = "green";
+            } else if (data.score < 0) {
+                scoreElement.style.color = "red";
+            } else {
+                scoreElement.style.color = "black";
+            }
+        });
+    }
+</script>
 {% endblock %}

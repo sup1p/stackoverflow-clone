@@ -1,23 +1,49 @@
 {% extends 'base.html' %}
 
-{% block title %}Ask a Question - Stack Overflow Clone{% endblock %}
+{% block title %}Ask a Question{% endblock %}
 
 {% block content %}
-<h2>Ask a Question</h2>
-<form method="POST" action="/ask/">
+<h1>Ask a Question</h1>
+<form method="post" id="questionForm">
     {% csrf_token %}
-    <div class="mb-3">
-        <label for="title" class="form-label">Title:</label>
-        <input type="text" class="form-control" id="title" name="title">
-    </div>
-    <div class="mb-3">
-        <label for="description" class="form-label">Description:</label>
-        <textarea class="form-control" id="description" name="description" rows="5"></textarea>
-    </div>
-    <div class="mb-3">
-        <label for="tags" class="form-label">Tags (comma-separated):</label>
-        <input type="text" class="form-control" id="tags" name="tags">
-    </div>
-    <button type="submit" class="btn btn-primary">Submit Question</button>
+    {{ form.as_p }}
+    <div id="tagSuggestions" style="border: 1px solid #ccc; display: none;"></div>
+    <button type="submit" class="btn btn-primary">Submit</button>
 </form>
+
+<script>
+    const tagInput = document.querySelector('#id_tags');
+    const tagSuggestions = document.querySelector('#tagSuggestions');
+
+    tagInput.addEventListener('input', function() {
+        const query = tagInput.value;
+        if (query.length > 0) {
+            fetch(`/tag-suggestions/?q=${query}`)
+                .then(response => response.json())
+                .then(data => {
+                    tagSuggestions.innerHTML = "";
+                    data.forEach(tag => {
+                        const suggestion = document.createElement('div');
+                        suggestion.textContent = tag;
+                        suggestion.style.cursor = 'pointer';
+                        suggestion.style.padding = '5px';
+                        suggestion.addEventListener('click', () => {
+                            tagInput.value = tag;
+                            tagSuggestions.style.display = 'none';
+                        });
+                        tagSuggestions.appendChild(suggestion);
+                    });
+                    tagSuggestions.style.display = 'block';
+                });
+        } else {
+            tagSuggestions.style.display = 'none';
+        }
+    });
+
+    document.addEventListener('click', function(event) {
+        if (!tagSuggestions.contains(event.target) && event.target !== tagInput) {
+            tagSuggestions.style.display = 'none';
+        }
+    });
+</script>
 {% endblock %}

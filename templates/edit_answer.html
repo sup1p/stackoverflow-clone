@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Answer{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Edit Your Answer</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="{% url 'question_detail' question.id %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

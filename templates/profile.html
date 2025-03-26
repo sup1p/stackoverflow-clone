@@ -38,7 +38,7 @@
             <h3>Your Questions</h3>
             <ul>
                 {% for question in questions %}
-                    <li><a href="/questions/{{ question.id }}/">{{ question.title }}</a></li>
+                    <li><a href="/post/questions/{{ question.id }}/">{{ question.title }}</a></li>
                 {% empty %}
                     <li>You have not asked any questions yet.</li>
                 {% endfor %}
@@ -49,7 +49,7 @@
             <h3>Your Answers</h3>
             <ul>
                 {% for answer in answers %}
-                    <li><a href="/questions/{{ answer.question.id }}/">Answer to: {{ answer.question.title }}</a></li>
+                    <li><a href="/post/questions/{{ answer.question.id }}/">Answer to: {{ answer.question.title }}</a></li>
                 {% empty %}
                     <li>You have not answered any questions yet.</li>
                 {% endfor %}
