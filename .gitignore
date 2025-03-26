@@ -1,0 +1,18 @@
+# Python файлы
+*.pyc
+*.pyo
+__pycache__/
+
+# Среда разработки
+*.env
+*.venv
+env/
+venv/
+
+# Логи
+*.log
+
+# Django файлы
+db.sqlite3
+media/
+staticfiles/
