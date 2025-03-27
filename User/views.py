@@ -23,7 +23,7 @@ def register(request):
                 {"id":user.id,
                 "username":user.username,
                 "display_name":user.username,
-                "avatar_url":user.avatar,
+                "avatar_url":user.avatar_path,
                 "reputation":user.reputation,
                 }
             }, status=status.HTTP_201_CREATED)
@@ -43,7 +43,7 @@ def login(request):
                     {"id": user.id,
                      "username": user.username,
                      "display_name": user.username,
-                     "avatar_url": user.avatar,
+                     "avatar_url": user.avatar_path,
                      "reputation": user.reputation,
                      }
             }, status=status.HTTP_201_CREATED)
@@ -72,6 +72,6 @@ def user(request):
         "id": user.id,
          "username": user.username,
          "display_name": user.username,
-         "avatar_url": user.avatar,
+         "avatar_url": user.avatar_path,
          "reputation": user.reputation,
          }, status=status.HTTP_201_CREATED)

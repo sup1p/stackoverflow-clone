@@ -7,8 +7,17 @@ load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
+SUPABASE_ACCESS_KEY_ID = os.getenv('SUPABASE_ACCESS_KEY_ID')
+SUPABASE_SECRET_ACCESS_KEY = os.getenv('SUPABASE_SECRET_ACCESS_KEY')
+SUPABASE_BUCKET_NAME = os.getenv('SUPABASE_BUCKET_NAME')
+SUPABASE_REGION = os.getenv('SUPABASE_REGION')
+SUPABASE_ENDPOINT_URL = os.getenv('SUPABASE_ENDPOINT_URL')
+DEFAULT_AVATAR_PATH = os.getenv('DEFAULT_AVATAR_PATH')
 
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
@@ -33,7 +42,7 @@ INSTALLED_APPS = [
 
     'rest_framework.authtoken',
     'rest_framework',
-    'corsheaders',           # Для разрешения запросов с фронтенда
+    'corsheaders',
 
     'User',
     'Post',
@@ -51,6 +60,7 @@ MIDDLEWARE = [
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True  # Разрешает любые внешние запросы (для разработки)
+CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -88,7 +98,7 @@ WSGI_APPLICATION = 'StackOverflowCopy.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    'default': dj_database_url.config(default=os.environ.get("DATABASE_URL"))
+    'default': dj_database_url.config(default=os.environ.get("SUPABASE_DATABASE_URL"))
 }
 
 
@@ -126,10 +136,6 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = '/static/'
-MEDIA_URL = '/media/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
-MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
