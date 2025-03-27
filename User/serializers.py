@@ -6,22 +6,22 @@ User = get_user_model()
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(style={'input_type': 'password'}, write_only=True)
-    password_repeat = serializers.CharField(style={'input_type': 'password_repeat'}, write_only=True)
+    password2 = serializers.CharField(style={'input_type': 'password2'}, write_only=True)
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'password','password_repeat')
+        fields = ('username', 'email', 'password','password2')
         extra_kwargs = {"password": {"write_only": True}}
 
     def validate(self, data):
         password = data['password']
-        password_repeat = data['password_repeat']
-        if password != password_repeat:
+        password2 = data['password2']
+        if password != password2:
             raise serializers.ValidationError("Passwords don't match")
         return data
 
     def create(self, validated_data):
-        validated_data.pop('password_repeat')
+        validated_data.pop('password2')
         validated_data['password'] = make_password(validated_data['password'])
         user = User.objects.create(**validated_data)
         return user

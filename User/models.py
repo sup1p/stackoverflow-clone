@@ -10,15 +10,11 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = ['username']
 
     bio = models.TextField(null=True, blank=True)
-    pictire = models.ImageField(upload_to="pictire/", null=True, blank=True)
-    last_seen = models.DateTimeField(auto_now=True)
+    avatar = models.ImageField(upload_to="picture/", null=True, blank=True)
 
     reputation = models.IntegerField(default=0)
     question_count = models.IntegerField(default=0)
     answer_count = models.IntegerField(default=0)
-    comment_count = models.IntegerField(default=0)
-    upvotes = models.IntegerField(default=0)
-    downvotes = models.IntegerField(default=0)
 
     def __str__(self):
         return self.username
