@@ -17,4 +17,10 @@ urlpatterns = [
 
     path('answers/<int:id>/vote/', views.answer_vote, name='answer_vote'),
     path('answers/<int:id>/accept/', views.answer_accept, name='answer_accept'),
+
+    path('tags/', views.tags_list, name='tags_list'),
+    path('tags/<int:id>/', views.tags_details, name='tag_details'),
+    path('tags/name/<str:name>', views.tags_by_name, name='tags_by_name'),
+    path('tags/search/', views.tags_search, name='tags_search'),
+    path('tags/name/<str:name>/questions', views.tag_questions, name='tag_questions'),
 ]

@@ -2,14 +2,15 @@ from copy import copy
 from datetime import timezone
 
 from django.db.models import Q
+from django.db.models import Count
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from Post.models import Question,Answer, Vote
-from Post.pagination import CustomPageNumberPagination
+from Post.models import Question, Answer, Vote, Tag
+from Post.pagination import CustomPageNumberPagination, TagCustomPageNumberPagination
 from Post.serializers import QuestionSerializer, AnswerSerializer
 
 
@@ -305,3 +306,115 @@ def answer_accept(request, id):
     answer.save()
     serializer = AnswerSerializer(answer)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def tags_list(request):
+    """
+        Метод: GET
+        Параметры запроса:
+          - page: номер страницы (по умолчанию 1)
+          - page_size: количество тегов на странице (по умолчанию 20)
+          - search: поиск по имени тега
+          - sort_by: 'popular', 'name', 'newest'
+    """
+    queryset = Tag.objects.all()
+
+    search = request.query_params.get('search')
+    if search:
+        queryset = queryset.filter(name__icontains=search)
+
+    queryset = queryset.annotate(count=Count('questions'))
+
+    sort_by = request.query_params.get('sort_by')
+    if sort_by == 'name':
+        queryset = queryset.order_by('name')
+    elif sort_by == 'newest':
+        queryset = queryset.order_by('-created_at')
+    elif sort_by == 'popular':
+        queryset = queryset.order_by('-count')
+
+    paginator = TagCustomPageNumberPagination()
+    paginated_queryset = paginator.paginate_queryset(queryset, request)
+
+    results = [
+        {
+            "id": tag.id,
+            "name": tag.name,
+            "description": tag.description,
+            "count": tag.count
+        }
+        for tag in paginated_queryset
+    ]
+    return paginator.get_paginated_response(results)
+
+
+@api_view(['GET'])
+def tags_details(request, id):
+    try:
+        tag = Tag.objects.get(id=id)
+        count = tag.questions.count()
+    except Tag.DoesNotExist:
+        return Response({"message": "Tag not found"}, status=status.HTTP_404_NOT_FOUND)
+    response_data = {
+        "id": tag.id,
+        "name": tag.name,
+        "description": tag.description,
+        "count": count  # Количество вопросов, использующих этот тег
+    }
+    return Response(response_data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def tags_by_name(request,name):
+    try:
+        tag = Tag.objects.get(name=name)
+        count = tag.questions.count()
+    except Tag.DoesNotExist:
+        return Response({"message": "Tag not found"}, status=status.HTTP_404_NOT_FOUND)
+    response_data = {
+        "id": tag.id,
+        "name": tag.name,
+        "description": tag.description,
+        "count": count  # Количество вопросов, использующих этот тег
+    }
+    return Response(response_data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def tags_search(request):
+    """
+    query parameters:
+        `q`: string (required) - Search query
+    """
+    query = request.query_params.get('q')
+    if not query:
+        return Response({"message": "Search query 'q' is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    tags = Tag.objects.filter(name__icontains=query)[:10]  #max 10 answers
+    result = [{"id": tag.id, "name": tag.name} for tag in tags]
+    return Response(result, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def tag_questions(request,name):
+    try:
+        tag = Tag.objects.get(name=name)
+    except Tag.DoesNotExist:
+        return Response({"message": "Tag not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    queryset = Question.objects.filter(tags=tag)
+
+    sort_by = request.query_params.get('sort_by')
+    if sort_by == 'votes':
+        queryset = queryset.order_by('-vote_count')
+    elif sort_by == 'active':
+        queryset = queryset.order_by('-updated_at')
+    elif sort_by == 'newest':
+        queryset = queryset.order_by('-created_at')
+
+    paginator = CustomPageNumberPagination()
+    paginated_queryset = paginator.paginate_queryset(queryset, request)
+    serializer = QuestionSerializer(paginated_queryset, many=True)
+
+    return paginator.get_paginated_response(serializer.data)

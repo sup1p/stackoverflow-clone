@@ -5,6 +5,9 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+
+from Post.models import Question, Answer, Tag
+from Post.serializers import QuestionSerializer
 from User.pagination import CustomPageNumberPagination
 from User.models import CustomUser
 from User.serializers import UserRegistrationSerializer, UserSerializer
@@ -164,3 +167,102 @@ def user_edit(request):
         "last_seen": user.last_login,
         "visit_streak": "Add in the future",
     }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def user_questions(request,id):
+    """
+    ** Query
+    Parameters **:
+
+    - `page`: integer(default: 1)
+    - `page_size`: integer(default: 10)
+    - `sort_by`: string(options: 'newest', 'votes', 'views')
+    """
+    try:
+        user = CustomUser.objects.get(id=id)
+    except CustomUser.DoesNotExist:
+        return Response({"error":"User not found on this id"}, status=status.HTTP_404_NOT_FOUND)
+    queryset = Question.objects.filter(author=user)
+    sort_by = request.query_params.get('sort_by')
+    if sort_by == 'votes':
+        queryset = queryset.order_by('-vote_count')
+    elif sort_by == 'views':
+        queryset = queryset.order_by('-view_count')
+    elif sort_by == 'newest':
+        queryset = queryset.order_by('-created_at')
+
+    paginator = CustomPageNumberPagination()
+    paginated_queryset = paginator.paginate_queryset(queryset, request)
+    serializer = QuestionSerializer(paginated_queryset, many=True)
+    return paginator.get_paginated_response(serializer.data)
+
+
+@api_view(['GET'])
+def user_answers(request,id):
+    """
+    **Query Parameters**:
+
+        - `page`: integer (default: 1)
+        - `page_size`: integer (default: 10)
+        - `sort_by`: string (options: 'newest', 'votes')
+"""
+    try:
+        user = CustomUser.objects.get(id=id)
+    except CustomUser.DoesNotExist:
+        return Response({"error":"User not found on this id"}, status=status.HTTP_404_NOT_FOUND)
+    queryset = Answer.objects.filter(author=user)
+    sort_by = request.query_params.get('sort_by')
+    if sort_by == 'votes':
+        queryset = queryset.order_by('-vote_count')
+    elif sort_by == 'views':
+        queryset = queryset.order_by('-view_count')
+    elif sort_by == 'newest':
+        queryset = queryset.order_by('-created_at')
+
+    paginator = CustomPageNumberPagination()
+    paginated_queryset = paginator.paginate_queryset(queryset, request)
+    serializer = QuestionSerializer(paginated_queryset, many=True)
+    return paginator.get_paginated_response(serializer.data)
+
+
+@api_view(['GET'])
+def user_tags(request,id):
+    try:
+        user = CustomUser.objects.get(id=id)
+    except CustomUser.DoesNotExist:
+        return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    tags_data = []
+    tags = Tag.objects.all()
+    for tag in tags:
+        total_count = tag.questions.count()
+        user_count = tag.questions.filter(author=user).count()
+
+        if user_count > 0:
+            tags_data.append({
+                "id": tag.id,
+                "name": tag.name,
+                "score": total_count,
+                "posts": user_count
+            })
+
+    return Response(tags_data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def user_reputation_history(request):
+    return Response({
+              "count": 1,
+              "next": None,
+              "previous": None,
+              "results": [
+                {
+                  "id": "1",
+                  "change": 10,
+                  "type": "question_upvote",
+                  "date": "2023-01-01T00:00:00Z",
+                  "description": "Question upvoted"
+                }
+              ]
+            })
