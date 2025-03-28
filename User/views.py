@@ -25,7 +25,7 @@ def register(request):
                 {"id":user.id,
                 "username":user.username,
                 "display_name":user.display_name,
-                "avatar_url":user.get_avatar_url() ,
+                "avatar_url":user.avatar_url,
                 "reputation":user.reputation,
                 }
             }, status=status.HTTP_201_CREATED)
@@ -45,7 +45,7 @@ def login(request):
                     {"id": user.id,
                      "username": user.username,
                      "display_name": user.display_name,
-                     "avatar_url": user.get_avatar_url() ,
+                     "avatar_url": user.avatar_url ,
                      "reputation": user.reputation,
                      }
             }, status=status.HTTP_200_OK)
@@ -74,7 +74,7 @@ def user(request):
         "id": user.id,
          "username": user.username,
          "display_name": user.display_name,
-         "avatar_url": user.get_avatar_url() ,
+         "avatar_url": user.avatar_url ,
          "reputation": user.reputation,
          }, status=status.HTTP_201_CREATED)
 
@@ -119,7 +119,7 @@ def user_details(request,id):
         "id": user.id,
         "username": user.username,
         "display_name": user.display_name,
-        "avatar_url": user.get_avatar_url() ,
+        "avatar_url": user.avatar_url ,
         "reputation": user.reputation,
         "location": user.location,
         "about": user.bio,
@@ -159,7 +159,7 @@ def user_edit(request):
         "id": user.id,
         "username": user.username,
         "display_name": user.display_name,
-        "avatar_url": user.get_avatar_url() ,
+        "avatar_url": user.avatar_url ,
         "reputation": user.reputation,
         "location": user.location,
         "about": user.bio,

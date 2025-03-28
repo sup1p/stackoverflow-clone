@@ -9,9 +9,14 @@ class TagSerializer(serializers.ModelSerializer):
         fields = ['id', 'name']
 
 class AuthorSerializer(serializers.ModelSerializer):
+    avatar_url = serializers.SerializerMethodField()
+
     class Meta:
         model = CustomUser
-        fields = ['id', 'username','display_name','avatar_url','reputation']
+        fields = ['id', 'username', 'display_name', 'avatar_url', 'reputation']
+
+    def get_avatar_url(self, obj):
+        return obj.get_avatar_url()
 
 class QuestionSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)

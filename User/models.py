@@ -2,9 +2,11 @@ import os
 
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-
-from .supabase_client import upload_file_to_supabase, generate_presigned_url
+import io
+from PIL import Image
+from .supabase_client import upload_file_to_supabase
 from Post.models import Tag
+
 
 
 # Create your models here.
@@ -17,22 +19,50 @@ class CustomUser(AbstractUser):
 
     bio = models.TextField(null=True, blank=True)
     display_name = models.CharField(max_length=100,default='')
-    avatar_url = models.CharField(max_length=255, null=True, blank=True)
+    avatar_url = models.CharField(default="https://aenacihkjsxjdpkeqxja.supabase.co/storage/v1/object/public/stackoverflowcopyomar//IMG-20221013-WA0032.jpg",max_length=255, null=True, blank=True)
 
     def save_avatar(self, file_data, file_name):
-        full_path = f"avatars/{self.username}/{file_name}"
-        if upload_file_to_supabase(file_data, os.getenv('SUPABASE_BUCKET_NAME'), full_path):
-            self.avatar_url = full_path
-            self.save()
+        try:
+            # Проверяем тип файла
+            if not isinstance(file_data, io.BytesIO):
+                # Читаем файл как байты и конвертируем в BytesIO
+                file_data = io.BytesIO(file_data.read())
 
-    def get_avatar_url(self):
-        if self.avatar_url is None:
-            return generate_presigned_url(
-                os.getenv('DEFAULT_AVATAR_PATH'),
-                os.getenv('SUPABASE_BUCKET_NAME')
-            )
+            # Перемещаем указатель в начало файла
+            file_data.seek(0)
 
-        return generate_presigned_url(self.avatar_url, os.getenv('SUPABASE_BUCKET_NAME'))
+            # 🔍 Сохранение файла локально для проверки (сохранится в директории с проектом)
+            with open(f"debug_{file_name}", "wb") as debug_file:
+                debug_file.write(file_data.getvalue())
+
+            # Теперь проверяем, что файл не повреждён
+            try:
+                image = Image.open(file_data)
+                image.verify()  # Проверка на повреждения
+                print(f"✅ Файл {file_name} успешно открыт и проверен. Формат: {image.format}")
+            except Exception as e:
+                print(f"❌ Ошибка при проверке изображения: {e}")
+                return
+
+            # Перемещаем указатель обратно в начало
+            file_data.seek(0)
+
+            # Генерируем полный путь для хранения файла в Supabase
+            full_path = f"avatars/{self.username}/{file_name}"
+
+            # Загружаем файл на Supabase
+            success = upload_file_to_supabase(file_data, os.getenv('SUPABASE_BUCKET_NAME'), full_path)
+
+            if success:
+                supabase_url = os.getenv('SUPABASE_URL').strip('/')
+                self.avatar_url = f"{supabase_url}/storage/v1/object/public/{os.getenv('SUPABASE_BUCKET_NAME')}/{full_path}"
+                self.save()
+                print(f"✅ Файл успешно загружен: {self.avatar_url}")
+            else:
+                raise Exception("❌ Ошибка загрузки файла на Supabase.")
+
+        except Exception as e:
+            print(f"Ошибка в save_avatar(): {e}")
 
     reputation = models.IntegerField(default=1)
     location = models.CharField(max_length=255,null=True, blank=True)
