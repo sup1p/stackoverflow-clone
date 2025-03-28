@@ -2,6 +2,9 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 
+from User.models import CustomUser
+from Post.serializers import TagSerializer
+
 User = get_user_model()
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -25,3 +28,13 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         validated_data['password'] = make_password(validated_data['password'])
         user = User.objects.create(**validated_data)
         return user
+
+class UserSerializer(serializers.ModelSerializer):
+    top_tags = TagSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            'id', 'username', 'display_name', 'avatar_url', 'reputation',
+            'location', 'member_since', 'gold_badges', 'silver_badges', 'bronze_badges', 'top_tags'
+        ]
