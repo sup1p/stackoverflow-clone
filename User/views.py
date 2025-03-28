@@ -45,7 +45,7 @@ def login(request):
                      "avatar_url": user.get_avatar_url() ,
                      "reputation": user.reputation,
                      }
-            }, status=status.HTTP_201_CREATED)
+            }, status=status.HTTP_200_OK)
     except CustomUser.DoesNotExist:
         return Response({'message': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -89,11 +89,11 @@ def user_list(request):
     """
     queryset = CustomUser.objects.all()
 
-    search = request.data.get('search')
+    search = request.query_params.get('search')
     if search:
         queryset = queryset.filter(username__icontains=search)
 
-    sort_by = request.data.get('sort_by')
+    sort_by = request.query_params.get('sort_by')
     if sort_by:
         if sort_by == 'newest':
             queryset = queryset.order_by('-member_since')

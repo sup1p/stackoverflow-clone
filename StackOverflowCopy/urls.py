@@ -18,7 +18,10 @@ Including another URLconf
 from django.urls import path, include
 from django.contrib import admin
 
+from Post.models import Question
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('User.urls')),
+    path('api/', include('Post.urls')),
 ]
