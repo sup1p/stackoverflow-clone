@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from Post.models import Tag, Question
+from Post.models import Tag, Question, Answer
 from User.models import CustomUser
 
 
@@ -19,3 +19,9 @@ class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
         fields = ['id', 'title', 'author', 'tags', 'content', 'created_at', 'updated_at','vote_count','answer_count','view_count']
+
+class AnswerSerializer(serializers.ModelSerializer):
+    author = AuthorSerializer(read_only=True)
+    class Meta:
+        model = Answer
+        fields = ['id','question_id','author', 'content', 'created_at', 'updated_at','vote_count','is_accepted']
