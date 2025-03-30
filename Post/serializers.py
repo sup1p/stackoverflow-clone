@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from Post.models import Tag, Question, Answer
-from User.models import CustomUser, Reputation
+from User.models import CustomUser
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -15,43 +15,36 @@ class AuthorSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'displayName', 'avatar_url', 'reputation']
 
 class QuestionSerializer(serializers.ModelSerializer):
-    tags = serializers.ListField(
+    tags = TagSerializer(many=True, read_only=True)
+    tag_names = serializers.ListField(
         child=serializers.CharField(), write_only=True
     )
     author = AuthorSerializer(read_only=True)
-    tag_objects = TagSerializer(many=True, read_only=True, source='tags')
+
     class Meta:
         model = Question
-        fields = ['id', 'title', 'author',
-                  'tags', # for input (list of names)
-                  'tag_objects',  # for output (full tag objects)
-            'content', 'created_at', 'updated_at','vote_count','answer_count','view_count']
+        fields = [
+            'id', 'title', 'author',
+            'tag_names',  # input: tag names (write-only)
+            'tags',       # output: full tag objects
+            'content', 'created_at', 'updated_at',
+            'vote_count', 'answer_count', 'view_count'
+        ]
 
     def create(self, validated_data):
-        tag_names = validated_data.pop('tags', [])
+        tag_names = validated_data.pop('tag_names', [])
         question = Question.objects.create(**validated_data)
-
-        # Link or create tags
-        tag_objs = []
-        for name in tag_names:
-            tag, _ = Tag.objects.get_or_create(name=name)
-            tag_objs.append(tag)
-
-        question.tags.set(tag_objs)
+        tags = [Tag.objects.get_or_create(name=name)[0] for name in tag_names]
+        question.tags.set(tags)
         return question
 
     def update(self, instance, validated_data):
-        tag_names = validated_data.pop('tags', None)
+        tag_names = validated_data.pop('tag_names', None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-
         if tag_names is not None:
-            tag_objs = []
-            for name in tag_names:
-                tag, _ = Tag.objects.get_or_create(name=name)
-                tag_objs.append(tag)
-            instance.tags.set(tag_objs)
-
+            tags = [Tag.objects.get_or_create(name=name)[0] for name in tag_names]
+            instance.tags.set(tags)
         instance.save()
         return instance
 

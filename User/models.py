@@ -27,8 +27,6 @@ class CustomUser(AbstractUser):
                 file_data = io.BytesIO(file_data.read())
 
             file_data.seek(0)
-            with open(f"debug_{file_name}", "wb") as debug_file:
-                debug_file.write(file_data.getvalue())
             try:
                 image = Image.open(file_data)
                 image.verify()
