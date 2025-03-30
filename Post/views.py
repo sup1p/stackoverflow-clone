@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from Post.models import Question, Answer, Vote, Tag
 from Post.pagination import CustomPageNumberPagination, TagCustomPageNumberPagination
 from Post.serializers import QuestionSerializer, AnswerSerializer
+from Post.utils import add_reputation
 
 
 @api_view(['GET', 'POST'])
@@ -47,22 +48,20 @@ def questions_list_and_create(request):
         serializer = QuestionSerializer(paginated_queryset, many=True)
         return paginator.get_paginated_response(serializer.data)
 
-    elif request.method == 'POST':
-        if not request.user.is_authenticated:
-            return Response({'detail': 'Authentication credentials were not provided.'},
-                            status=status.HTTP_401_UNAUTHORIZED)
 
-        '''{
-              "title": "string",
-              "content": "string",
-              "tags": ["string"]
-        }'''
+    elif request.method == 'POST':
+
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=401)
+
         serializer = QuestionSerializer(data=request.data)
+
         if serializer.is_valid():
             serializer.save(author=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response(serializer.data, status=201)
+
+        return Response(serializer.errors, status=400)
 
 
 
@@ -153,15 +152,23 @@ def question_vote(request,id):
 
             if old_vote == "upvote" and vote_type == "downvote":
                 question.vote_count -= 2
+                add_reputation(user_id=question.author_id, rep_type='question_downvote', change=-20,
+                               description=f"Question was upvoted but now changed to downvoted:{question.title}")
             elif old_vote == "downvote" and vote_type == "upvote":
                 question.vote_count += 2
+                add_reputation(user_id=question.author_id, rep_type='question_downvote', change=20,
+                               description=f"Question was downvated but now changed to upvoted:{question.title}")
             question.save()
     except Vote.DoesNotExist:
         Vote.objects.create(question=question, user=request.user, vote_type=vote_type)
         if vote_type == "upvote":
             question.vote_count += 1
+            add_reputation(user_id=question.author_id,rep_type='question_upvote',change=10,
+                            description=f"Question upvoted:{question.title}")
         elif vote_type == "downvote":
             question.vote_count -= 1
+            add_reputation(user_id=question.author_id, rep_type='question_downvote', change=-10,
+                            description=f"Question downvoted:{question.title}")
         question.save()
     serializer = QuestionSerializer(question)
     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -182,7 +189,7 @@ def answer_list_create(request):
         sort_by = request.query_params.get('sort_by')
         if sort_by:
             if sort_by == 'votes':
-                queryset = queryset.order_by('-votes')
+                queryset = queryset.order_by('-vote_count')
             elif sort_by == 'newest':
                 queryset = queryset.order_by('-newest')
             elif sort_by == 'oldest':
@@ -281,15 +288,23 @@ def answer_vote(request,id):
 
             if old_vote == "upvote" and vote_type == "downvote":
                 answer.vote_count -= 2
+                add_reputation(user_id=answer.author_id, rep_type='answer_downvote', change=-40,
+                               description=f"Answer was upvoted but now changed to downvoted ->:{answer.question.title}:{answer.content}")
             elif old_vote == "downvote" and vote_type == "upvote":
                 answer.vote_count += 2
+                add_reputation(user_id=answer.author_id, rep_type='answer_upvote', change=40,
+                               description=f"Answer was downvoted but now changed to upvoted ->:{answer.question.title}:{answer.content}")
             answer.save()
     except Vote.DoesNotExist:
         Vote.objects.create(answer=answer, user=request.user, vote_type=vote_type)
         if vote_type == "upvote":
             answer.vote_count += 1
+            add_reputation(user_id=answer.author_id, rep_type='answer_upvote', change=20,
+                           description=f"Answer upvoted ->:{answer.question.title}:{answer.content}")
         elif vote_type == "downvote":
             answer.vote_count -= 1
+            add_reputation(user_id=answer.author_id, rep_type='answer_downvote', change=-20,
+                           description=f"Answer downvoted ->:{answer.question.title}:{answer.content}")
         answer.save()
     serializer = AnswerSerializer(answer)
     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -299,13 +314,45 @@ def answer_vote(request,id):
 @permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def answer_accept(request, id):
-    answer = Answer.objects.get(id=id)
-    if answer.author != request.user:
-        return Response({'error': 'you are not the owner'}, status=status.HTTP_403_FORBIDDEN)
-    answer.is_accepted = True
-    answer.save()
-    serializer = AnswerSerializer(answer)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    try:
+        answer = Answer.objects.get(id=id)
+        question = answer.question  # Получаем вопрос, к которому относится ответ
+
+        # Проверка, что только автор вопроса может принимать ответ
+        if request.user != question.author:
+            return Response({'error': 'You are not the owner of this question'}, status=status.HTTP_403_FORBIDDEN)
+
+        if answer.is_accepted:
+            # Отклонение ответа
+            answer.is_accepted = False
+            answer.save()
+
+            # Снижение репутации
+            add_reputation(
+                user_id=answer.author_id,
+                rep_type='answer_accepted',
+                change=-15,
+                description=f"Answer was unaccepted for question: {question.title}"
+            )
+            serializer = AnswerSerializer(answer)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        Answer.objects.filter(question=question, is_accepted=True).update(is_accepted=False)
+
+        answer.is_accepted = True
+        answer.save()
+
+        add_reputation(
+            user_id=answer.author_id,
+            rep_type='answer_accepted',
+            change=15,
+            description=f"Answer accepted for question: {question.title}"
+        )
+
+        serializer = AnswerSerializer(answer)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except Answer.DoesNotExist:
+        return Response({'error': 'Answer not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
 @api_view(['GET'])

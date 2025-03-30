@@ -7,10 +7,10 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 
 from Post.models import Question, Answer, Tag
-from Post.serializers import QuestionSerializer
+from Post.serializers import QuestionSerializer, AnswerSerializer
 from User.pagination import CustomPageNumberPagination
-from User.models import CustomUser
-from User.serializers import UserRegistrationSerializer, UserSerializer
+from User.models import CustomUser, Reputation
+from User.serializers import UserRegistrationSerializer, UserSerializer, ReputationSerializer
 
 
 @api_view(['POST'])
@@ -24,7 +24,7 @@ def register(request):
             "user":
                 {"id":user.id,
                 "username":user.username,
-                "display_name":user.display_name,
+                "displayName":user.displayName,
                 "avatar_url":user.avatar_url,
                 "reputation":user.reputation,
                 }
@@ -44,7 +44,7 @@ def login(request):
                 "user":
                     {"id": user.id,
                      "username": user.username,
-                     "display_name": user.display_name,
+                     "displayName": user.displayName,
                      "avatar_url": user.avatar_url ,
                      "reputation": user.reputation,
                      }
@@ -73,7 +73,7 @@ def user(request):
     return Response({
         "id": user.id,
          "username": user.username,
-         "display_name": user.display_name,
+         "displayName": user.displayName,
          "avatar_url": user.avatar_url ,
          "reputation": user.reputation,
          }, status=status.HTTP_201_CREATED)
@@ -87,7 +87,7 @@ def user_list(request):
         Параметры запроса:
           - page: номер страницы (по умолчанию 1)
           - page_size: количество объектов на странице (по умолчанию 12)
-          - search: фильтрация по username или display_name
+          - search: фильтрация по username или displayName
           - sort_by: варианты сортировки: 'reputation', 'newest', 'name'
     """
     queryset = CustomUser.objects.all()
@@ -107,7 +107,7 @@ def user_list(request):
     paginator = CustomPageNumberPagination()
     paginated_queryset = paginator.paginate_queryset(queryset, request)
     serializer = UserSerializer(paginated_queryset, many=True)
-    return Response(paginator.get_paginated_response(serializer.data), status=status.HTTP_200_OK)
+    return paginator.get_paginated_response(serializer.data)
 
 @api_view(['GET'])
 def user_details(request,id):
@@ -118,11 +118,12 @@ def user_details(request,id):
     return Response({
         "id": user.id,
         "username": user.username,
-        "display_name": user.display_name,
+        "displayName": user.displayName,
+        "email": user.email,
         "avatar_url": user.avatar_url ,
         "reputation": user.reputation,
         "location": user.location,
-        "about": user.bio,
+        "about": user.about,
         "member_since": user.member_since,
         "last_seen": user.last_login,
         "visit_streak": "Add in the future",
@@ -134,39 +135,55 @@ def user_details(request,id):
 
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
-@api_view(['PATCH'])
-def user_edit(request):
-    """
-        Ожидается, что файл аватара передаётся через request.FILES с ключом 'avatar'.
-    """
+@api_view(['PATCH','GET'])
+def user_edit_get(request):
+    if request.method == 'PATCH':
+        """
+            Ожидается, что файл аватара передаётся через request.FILES с ключом 'avatar'.
+        """
 
-    new_display_name = request.data.get('display_name')
-    new_location = request.data.get('location')
-    new_about = request.data.get('about')
-    user = CustomUser.objects.get(id=request.user.id)
-    avatar_file = request.FILES.get('avatar')
-    if avatar_file:
-        user.save_avatar(avatar_file,avatar_file.name)
+        new_displayName = request.data.get('displayName')
+        new_location = request.data.get('location')
+        new_about = request.data.get('about')
+        user = CustomUser.objects.get(id=request.user.id)
+        avatar_file = request.FILES.get('avatar')
+        if avatar_file:
+            user.save_avatar(avatar_file,avatar_file.name)
 
-    if new_display_name is not None and new_display_name != '' and new_display_name:
-        user.display_name = new_display_name
-    if new_location is not None and new_location != '' and new_location:
-        user.location = new_location
-    if new_about is not None and new_about != '' and new_about:
-        user.about = new_about
-    user.save()
-    return Response({
-        "id": user.id,
-        "username": user.username,
-        "display_name": user.display_name,
-        "avatar_url": user.avatar_url ,
-        "reputation": user.reputation,
-        "location": user.location,
-        "about": user.bio,
-        "member_since": user.member_since,
-        "last_seen": user.last_login,
-        "visit_streak": "Add in the future",
-    }, status=status.HTTP_200_OK)
+        if new_displayName is not None and new_displayName != '' and new_displayName:
+            user.displayName = new_displayName
+        if new_location is not None and new_location != '' and new_location:
+            user.location = new_location
+        if new_about is not None and new_about != '' and new_about:
+            user.about = new_about
+        user.save()
+        return Response({
+            "id": user.id,
+            "username": user.username,
+            "displayName": user.displayName,
+            "avatar_url": user.avatar_url ,
+            "reputation": user.reputation,
+            "location": user.location,
+            "about": user.about,
+            "member_since": user.member_since,
+            "last_seen": user.last_login,
+            "visit_streak": "Add in the future",
+        }, status=status.HTTP_200_OK)
+    elif request.method == 'GET':
+        request_user = CustomUser.objects.get(id=request.user.id)
+        return Response({
+            "id": request_user.id,
+            "username": request_user.username,
+            "displayName": request_user.displayName,
+            "email": request_user.email,
+            "avatar_url": request_user.avatar_url,
+            "reputation": request_user.reputation,
+            "location": request_user.location,
+            "about": request_user.about,
+            "member_since": request_user.member_since,
+            "last_seen": request_user.last_login,
+            "visit_streak": "Add in the future",
+        }, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])
@@ -180,10 +197,10 @@ def user_questions(request,id):
     - `sort_by`: string(options: 'newest', 'votes', 'views')
     """
     try:
-        user = CustomUser.objects.get(id=id)
+        userr = CustomUser.objects.get(id=id)
     except CustomUser.DoesNotExist:
         return Response({"error":"User not found on this id"}, status=status.HTTP_404_NOT_FOUND)
-    queryset = Question.objects.filter(author=user)
+    queryset = Question.objects.filter(author=userr)
     sort_by = request.query_params.get('sort_by')
     if sort_by == 'votes':
         queryset = queryset.order_by('-vote_count')
@@ -191,6 +208,8 @@ def user_questions(request,id):
         queryset = queryset.order_by('-view_count')
     elif sort_by == 'newest':
         queryset = queryset.order_by('-created_at')
+    else:
+        queryset = queryset.order_by('-view_count')
 
     paginator = CustomPageNumberPagination()
     paginated_queryset = paginator.paginate_queryset(queryset, request)
@@ -219,10 +238,12 @@ def user_answers(request,id):
         queryset = queryset.order_by('-view_count')
     elif sort_by == 'newest':
         queryset = queryset.order_by('-created_at')
+    else:
+        queryset = queryset.order_by('-vote_count')
 
     paginator = CustomPageNumberPagination()
     paginated_queryset = paginator.paginate_queryset(queryset, request)
-    serializer = QuestionSerializer(paginated_queryset, many=True)
+    serializer = AnswerSerializer(paginated_queryset, many=True)
     return paginator.get_paginated_response(serializer.data)
 
 
@@ -251,18 +272,15 @@ def user_tags(request,id):
 
 
 @api_view(['GET'])
-def user_reputation_history(request):
-    return Response({
-              "count": 1,
-              "next": None,
-              "previous": None,
-              "results": [
-                {
-                  "id": "1",
-                  "change": 10,
-                  "type": "question_upvote",
-                  "date": "2023-01-01T00:00:00Z",
-                  "description": "Question upvoted"
-                }
-              ]
-            })
+def user_reputation_history(request, input_id):
+    try:
+        user = CustomUser.objects.get(id=input_id)
+    except CustomUser.DoesNotExist:
+        return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    queryset = Reputation.objects.filter(user=user).order_by('-date')
+    paginator = CustomPageNumberPagination()
+    paginated_queryset = paginator.paginate_queryset(queryset, request)
+
+    serializer = ReputationSerializer(paginated_queryset, many=True)
+    return paginator.get_paginated_response(serializer.data)

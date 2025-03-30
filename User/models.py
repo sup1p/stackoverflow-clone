@@ -17,40 +17,30 @@ class CustomUser(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
-    bio = models.TextField(null=True, blank=True)
-    display_name = models.CharField(max_length=100,default='')
+    about = models.TextField(null=True, blank=True)
+    displayName = models.CharField(max_length=100,default="default_displayName")
     avatar_url = models.CharField(default="https://aenacihkjsxjdpkeqxja.supabase.co/storage/v1/object/public/stackoverflowcopyomar//IMG-20221013-WA0032.jpg",max_length=255, null=True, blank=True)
 
     def save_avatar(self, file_data, file_name):
         try:
-            # Проверяем тип файла
             if not isinstance(file_data, io.BytesIO):
-                # Читаем файл как байты и конвертируем в BytesIO
                 file_data = io.BytesIO(file_data.read())
 
-            # Перемещаем указатель в начало файла
             file_data.seek(0)
-
-            # 🔍 Сохранение файла локально для проверки (сохранится в директории с проектом)
             with open(f"debug_{file_name}", "wb") as debug_file:
                 debug_file.write(file_data.getvalue())
-
-            # Теперь проверяем, что файл не повреждён
             try:
                 image = Image.open(file_data)
-                image.verify()  # Проверка на повреждения
+                image.verify()
                 print(f"✅ Файл {file_name} успешно открыт и проверен. Формат: {image.format}")
             except Exception as e:
                 print(f"❌ Ошибка при проверке изображения: {e}")
                 return
 
-            # Перемещаем указатель обратно в начало
             file_data.seek(0)
 
-            # Генерируем полный путь для хранения файла в Supabase
             full_path = f"avatars/{self.username}/{file_name}"
 
-            # Загружаем файл на Supabase
             success = upload_file_to_supabase(file_data, os.getenv('SUPABASE_BUCKET_NAME'), full_path)
 
             if success:
@@ -76,3 +66,21 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+
+class Reputation(models.Model):
+    TYPE_CHOICES = [
+        ('question_upvote', 'Question Upvote'),
+        ('answer_upvote', 'Answer Upvote'),
+        ('answer_accepted', 'Answer Accepted'),
+        ('answer_downvote', 'Answer Downvote'),
+        ('question_downvote', 'Question Downvote'),
+    ]
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='reputation_changes')
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='!no data!')
+    change = models.IntegerField()
+    date = models.DateTimeField(auto_now_add=True)
+    description = models.TextField(null=True, blank=True)
+    def __str__(self):
+        return f"{self.user.username} - {self.type} {self.change}"
