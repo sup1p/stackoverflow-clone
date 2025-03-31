@@ -4,7 +4,7 @@ Stack Overflow Clone — platform for sharing questions and answers in IT and te
 
 ## Website link
 
-👉 [Go to website](https://sof-frontend-fsxb.vercel.app/)  
+👉 [Go to website](https://sof-frontend-23us.vercel.app/)  
 
 ### Main page
 ![Main](Screenshots/{4B148A81-E3C0-4EBD-9D36-FBF9BEF0A2B8}.png)
