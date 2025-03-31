@@ -35,7 +35,7 @@ Stack Overflow Clone — platform for sharing questions and answers in IT and te
 ## Deploy
 
 - **Frontend**: [Vercel](https://vercel.com/)  
-- **Backend**: [AWS]
+- **Backend**: [AWS EC2]
 - **Database**: PostgreSQL on Supabase
 
 ## Local run
