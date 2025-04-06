@@ -1,10 +1,14 @@
 from django.contrib.auth.models import AnonymousUser
+from django.http import JsonResponse
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+from django.core.cache import cache
+import json
+import hashlib
 
 from Post.models import Question, Answer, Tag
 from Post.serializers import QuestionSerializer, AnswerSerializer
@@ -90,6 +94,15 @@ def user_list(request):
           - search: фильтрация по username или displayName
           - sort_by: варианты сортировки: 'reputation', 'newest', 'name'
     """
+    query_params = request.query_params.dict()
+    key_raw = json.dumps(query_params,sort_keys=True)
+    key_hash = hashlib.md5(key_raw.encode()).hexdigest()
+    cache_key = f"users_list:{key_hash}"
+
+    cached_users = cache.get(cache_key)
+    if cached_users:
+        return Response(cached_users, status=status.HTTP_200_OK)
+
     queryset = CustomUser.objects.all()
 
     search = request.query_params.get('search')
@@ -107,7 +120,9 @@ def user_list(request):
     paginator = CustomPageNumberPagination()
     paginated_queryset = paginator.paginate_queryset(queryset, request)
     serializer = UserSerializer(paginated_queryset, many=True)
-    return paginator.get_paginated_response(serializer.data)
+    paginated_response = paginator.get_paginated_response(serializer.data)
+    cache.set(cache_key, paginated_response.data, timeout = 120)
+    return paginated_response
 
 @api_view(['GET'])
 def user_details(request,id):
@@ -170,8 +185,15 @@ def user_edit_get(request):
             "visit_streak": "Add in the future",
         }, status=status.HTTP_200_OK)
     elif request.method == 'GET':
+        user_id = request.user.id
+        cache_key = f"user_profile:{user_id}"
+        cached_profile = cache.get(cache_key)
+        if cached_profile:
+            return JsonResponse(cached_profile, status=status.HTTP_200_OK)
+
         request_user = CustomUser.objects.get(id=request.user.id)
-        return Response({
+
+        user_data = {
             "id": request_user.id,
             "username": request_user.username,
             "displayName": request_user.displayName,
@@ -183,7 +205,9 @@ def user_edit_get(request):
             "member_since": request_user.member_since,
             "last_seen": request_user.last_login,
             "visit_streak": "Add in the future",
-        }, status=status.HTTP_200_OK)
+        }
+        cache.set(cache_key, user_data, timeout = 180)
+        return Response(user_data, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])

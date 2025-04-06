@@ -1,6 +1,7 @@
 from copy import copy
-from datetime import timezone
-
+from django.core.cache import cache
+import json
+import hashlib
 from django.db.models import Q
 from django.db.models import Count
 from rest_framework import status
@@ -17,6 +18,17 @@ from Post.utils import add_reputation
 
 @api_view(['GET', 'POST'])
 def questions_list_and_create(request):
+    query_params = request.query_params.dict()
+    key_raw = json.dumps(query_params, sort_keys=True)
+    key_hash = hashlib.md5(key_raw.encode()).hexdigest()
+    cache_key = f"question_list:{key_hash}"
+
+    cached_response = cache.get(cache_key)
+    if cached_response:
+        return Response(cached_response, status=status.HTTP_200_OK)
+
+    queryset = Question.objects.all()
+
     if request.method == 'GET':
         queryset = Question.objects.all()
 
@@ -46,7 +58,10 @@ def questions_list_and_create(request):
         paginator = CustomPageNumberPagination()
         paginated_queryset = paginator.paginate_queryset(queryset, request)
         serializer = QuestionSerializer(paginated_queryset, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        paginated_response = paginator.get_paginated_response(serializer.data)
+
+        cache.set(cache_key, paginated_response.data, timeout=120)
+        return paginated_response
 
 
     elif request.method == 'POST':
@@ -365,6 +380,15 @@ def tags_list(request):
           - search: поиск по имени тега
           - sort_by: 'popular', 'name', 'newest'
     """
+    query_params = request.query_params.dict()
+    key_raw = json.dumps(query_params, sort_keys=True)
+    key_hash = hashlib.md5(key_raw.encode()).hexdigest()
+    cache_key = f"tags_list:{key_hash}"
+
+    cached_response = cache.get(cache_key)
+    if cached_response:
+        return Response(cached_response, status=status.HTTP_200_OK)
+
     queryset = Tag.objects.all()
 
     search = request.query_params.get('search')
@@ -393,7 +417,9 @@ def tags_list(request):
         }
         for tag in paginated_queryset
     ]
-    return paginator.get_paginated_response(results)
+    paginated_response = paginator.get_paginated_response(results)
+    cache.set(cache_key, paginated_response.data, timeout=120)
+    return paginated_response
 
 
 @api_view(['GET'])
