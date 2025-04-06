@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AnonymousUser
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
@@ -312,18 +313,17 @@ def user_tags(request,id):
         return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
     tags_data = []
-    tags = Tag.objects.all()
+    tags = Tag.objects.annotate(
+        total_count=Count('questions'),
+        user_count=Count('questions',filter=Q(questions__author__id=user.id))
+        ).filter(user_count__gt=0)
     for tag in tags:
-        total_count = tag.questions.count()
-        user_count = tag.questions.filter(author=user).count()
-
-        if user_count > 0:
-            tags_data.append({
-                "id": tag.id,
-                "name": tag.name,
-                "score": total_count,
-                "posts": user_count
-            })
+        tags_data.append({
+            "id": tag.id,
+            "name": tag.name,
+            "score": tag.total_count,
+            "posts": tag.user_count
+        })
     cache.set(cache_key, tags_data, timeout = 120)
     return Response(tags_data, status=status.HTTP_200_OK)
 
