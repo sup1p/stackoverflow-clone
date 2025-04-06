@@ -14,5 +14,5 @@ urlpatterns = [
     path('users/<int:id>/questions/', views.user_questions, name='user_questions'),
     path('users/<int:id>/answers/', views.user_answers, name='user_answers'),
     path('users/<int:id>/tags/', views.user_tags, name='user_tags'),
-    path('users/<int:input_id>/reputation/', views.user_reputation_history, name='user_reputation_history'),
+    path('users/<int:id>/reputation/', views.user_reputation_history, name='user_reputation_history'),
 ]

@@ -126,11 +126,16 @@ def user_list(request):
 
 @api_view(['GET'])
 def user_details(request,id):
+    cache_key = f"user_details:{id}"
+    cached_response = cache.get(cache_key)
+    if cached_response:
+        return Response(cached_response, status=status.HTTP_200_OK)
     try:
         user = CustomUser.objects.get(pk = id)
     except CustomUser.DoesNotExist:
         return Response({'error': 'Пользователь не найден'}, status=404)
-    return Response({
+
+    user_data = {
         "id": user.id,
         "username": user.username,
         "displayName": user.displayName,
@@ -145,7 +150,9 @@ def user_details(request,id):
         "gold_badges": user.gold_badges,
         "silver_badges": user.silver_badges,
         "bronze_badges": user.bronze_badges,
-    }, status = status.HTTP_200_OK)
+    }
+    cache.set(cache_key, user_data, timeout = 180)
+    return Response(user_data,status = status.HTTP_200_OK)
 
 
 @authentication_classes([TokenAuthentication])
@@ -220,6 +227,13 @@ def user_questions(request,id):
     - `page_size`: integer(default: 10)
     - `sort_by`: string(options: 'newest', 'votes', 'views')
     """
+    query_params = request.query_params.dict()
+    key_raw = json.dumps(query_params,sort_keys=True)
+    key_hash = hashlib.md5(key_raw.encode()).hexdigest()
+    cache_key = f"user_questions:{id}{key_hash}"
+    cached_response = cache.get(cache_key)
+    if cached_response:
+        return Response(cached_response, status=status.HTTP_200_OK)
     try:
         userr = CustomUser.objects.get(id=id)
     except CustomUser.DoesNotExist:
@@ -238,7 +252,9 @@ def user_questions(request,id):
     paginator = CustomPageNumberPagination()
     paginated_queryset = paginator.paginate_queryset(queryset, request)
     serializer = QuestionSerializer(paginated_queryset, many=True)
-    return paginator.get_paginated_response(serializer.data)
+    paginated_response = paginator.get_paginated_response(serializer.data)
+    cache.set(cache_key, paginated_response.data, timeout = 120)
+    return paginated_response
 
 
 @api_view(['GET'])
@@ -250,6 +266,14 @@ def user_answers(request,id):
         - `page_size`: integer (default: 10)
         - `sort_by`: string (options: 'newest', 'votes')
 """
+    query_params = request.query_params.dict()
+    key_raw = json.dumps(query_params,sort_keys=True)
+    key_hash = hashlib.md5(key_raw.encode()).hexdigest()
+    cache_key = f"user_questions:{id}{key_hash}"
+    cached_response = cache.get(cache_key)
+    if cached_response:
+        return Response(cached_response, status=status.HTTP_200_OK)
+
     try:
         user = CustomUser.objects.get(id=id)
     except CustomUser.DoesNotExist:
@@ -268,11 +292,20 @@ def user_answers(request,id):
     paginator = CustomPageNumberPagination()
     paginated_queryset = paginator.paginate_queryset(queryset, request)
     serializer = AnswerSerializer(paginated_queryset, many=True)
-    return paginator.get_paginated_response(serializer.data)
+    paginated_response = paginator.get_paginated_response(serializer.data)
+    cache.set(cache_key, paginated_response.data, timeout = 120)
+    return paginated_response
 
 
 @api_view(['GET'])
 def user_tags(request,id):
+    query_params = request.query_params.dict()
+    key_raw = json.dumps(query_params, sort_keys=True)
+    key_hash = hashlib.md5(key_raw.encode()).hexdigest()
+    cache_key = f"user_questions:{id}{key_hash}"
+    cached_response = cache.get(cache_key)
+    if cached_response or cached_response == []:
+        return Response(cached_response, status=status.HTTP_200_OK)
     try:
         user = CustomUser.objects.get(id=id)
     except CustomUser.DoesNotExist:
@@ -291,20 +324,25 @@ def user_tags(request,id):
                 "score": total_count,
                 "posts": user_count
             })
-
+    cache.set(cache_key, tags_data, timeout = 120)
     return Response(tags_data, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])
-def user_reputation_history(request, input_id):
+def user_reputation_history(request, id):
+    cache_key = f"user_reputation_history:{id}"
+    cached_response = cache.get(cache_key)
+    if cached_response:
+        return Response(cached_response, status=status.HTTP_200_OK)
     try:
-        user = CustomUser.objects.get(id=input_id)
+        user = CustomUser.objects.get(id=id)
     except CustomUser.DoesNotExist:
         return Response({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
     queryset = Reputation.objects.filter(user=user).order_by('-date')
     paginator = CustomPageNumberPagination()
     paginated_queryset = paginator.paginate_queryset(queryset, request)
-
     serializer = ReputationSerializer(paginated_queryset, many=True)
-    return paginator.get_paginated_response(serializer.data)
+    paginated_response = paginator.get_paginated_response(serializer.data)
+    cache.set(cache_key, paginated_response.data, timeout = 120)
+    return paginated_response

@@ -15,7 +15,6 @@ from Post.pagination import CustomPageNumberPagination, TagCustomPageNumberPagin
 from Post.serializers import QuestionSerializer, AnswerSerializer
 from Post.utils import add_reputation
 
-
 @api_view(['GET', 'POST'])
 def questions_list_and_create(request):
     query_params = request.query_params.dict()
@@ -26,8 +25,6 @@ def questions_list_and_create(request):
     cached_response = cache.get(cache_key)
     if cached_response:
         return Response(cached_response, status=status.HTTP_200_OK)
-
-    queryset = Question.objects.all()
 
     if request.method == 'GET':
         queryset = Question.objects.all()
