@@ -74,7 +74,10 @@ def logout(request):
 @permission_classes([IsAuthenticated])
 @api_view(['GET'])
 def user(request):
-    user = CustomUser.objects.get(id=request.user.id)
+    try:
+        user = CustomUser.objects.get(id=request.user.id)
+    except CustomUser.DoesNotExist:
+        return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
     return Response({
         "id": user.id,
          "username": user.username,
@@ -168,28 +171,31 @@ def user_edit_get(request):
         new_displayName = request.data.get('displayName')
         new_location = request.data.get('location')
         new_about = request.data.get('about')
-        user = CustomUser.objects.get(id=request.user.id)
+        try:
+            request_user = CustomUser.objects.get(id=request.user.id)
+        except CustomUser.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
         avatar_file = request.FILES.get('avatar')
         if avatar_file:
-            user.save_avatar(avatar_file,avatar_file.name)
+            request_user.save_avatar(avatar_file,avatar_file.name)
 
         if new_displayName is not None and new_displayName != '' and new_displayName:
-            user.displayName = new_displayName
+            request_user.displayName = new_displayName
         if new_location is not None and new_location != '' and new_location:
-            user.location = new_location
+            request_user.location = new_location
         if new_about is not None and new_about != '' and new_about:
-            user.about = new_about
-        user.save()
+            request_user.about = new_about
+        request_user.save()
         return Response({
-            "id": user.id,
-            "username": user.username,
-            "displayName": user.displayName,
-            "avatar_url": user.avatar_url ,
-            "reputation": user.reputation,
-            "location": user.location,
-            "about": user.about,
-            "member_since": user.member_since,
-            "last_seen": user.last_login,
+            "id": request_user.id,
+            "username": request_user.username,
+            "displayName": request_user.displayName,
+            "avatar_url": request_user.avatar_url ,
+            "reputation": request_user.reputation,
+            "location": request_user.location,
+            "about": request_user.about,
+            "member_since": request_user.member_since,
+            "last_seen": request_user.last_login,
             "visit_streak": "Add in the future",
         }, status=status.HTTP_200_OK)
     elif request.method == 'GET':
@@ -198,8 +204,10 @@ def user_edit_get(request):
         cached_profile = cache.get(cache_key)
         if cached_profile:
             return JsonResponse(cached_profile, status=status.HTTP_200_OK)
-
-        request_user = CustomUser.objects.get(id=request.user.id)
+        try:
+            request_user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
 
         user_data = {
             "id": request_user.id,

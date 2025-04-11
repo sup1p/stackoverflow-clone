@@ -164,23 +164,27 @@ def question_vote(request,id):
 
             if old_vote == "upvote" and vote_type == "downvote":
                 question.vote_count -= 2
-                add_reputation(user_id=question.author_id, rep_type='question_downvote', change=-20,
-                               description=f"Question was upvoted but now changed to downvoted:{question.title}")
+                if request.user != question.author:
+                    add_reputation(user_id=question.author_id, rep_type='question_downvote', change=-20,
+                                   description=f"Question was upvoted but now changed to downvoted:{question.title}")
             elif old_vote == "downvote" and vote_type == "upvote":
                 question.vote_count += 2
-                add_reputation(user_id=question.author_id, rep_type='question_downvote', change=20,
-                               description=f"Question was downvated but now changed to upvoted:{question.title}")
+                if request.user != question.author:
+                    add_reputation(user_id=question.author_id, rep_type='question_downvote', change=20,
+                                   description=f"Question was downvated but now changed to upvoted:{question.title}")
             question.save()
     except Vote.DoesNotExist:
         Vote.objects.create(question=question, user=request.user, vote_type=vote_type)
         if vote_type == "upvote":
             question.vote_count += 1
-            add_reputation(user_id=question.author_id,rep_type='question_upvote',change=10,
-                            description=f"Question upvoted:{question.title}")
+            if request.user != question.author:
+                add_reputation(user_id=question.author_id,rep_type='question_upvote',change=10,
+                               description=f"Question upvoted:{question.title}")
         elif vote_type == "downvote":
             question.vote_count -= 1
-            add_reputation(user_id=question.author_id, rep_type='question_downvote', change=-10,
-                            description=f"Question downvoted:{question.title}")
+            if request.user != question.author:
+                add_reputation(user_id=question.author_id, rep_type='question_downvote', change=-10,
+                               description=f"Question downvoted:{question.title}")
         question.save()
     serializer = QuestionSerializer(question)
     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -300,23 +304,27 @@ def answer_vote(request,id):
 
             if old_vote == "upvote" and vote_type == "downvote":
                 answer.vote_count -= 2
-                add_reputation(user_id=answer.author_id, rep_type='answer_downvote', change=-40,
-                               description=f"Answer was upvoted but now changed to downvoted ->:{answer.question.title}:{answer.content}")
+                if request.user != answer.author:
+                    add_reputation(user_id=answer.author_id, rep_type='answer_downvote', change=-40,
+                                   description=f"Answer was upvoted but now changed to downvoted ->:{answer.question.title}:{answer.content}")
             elif old_vote == "downvote" and vote_type == "upvote":
                 answer.vote_count += 2
-                add_reputation(user_id=answer.author_id, rep_type='answer_upvote', change=40,
-                               description=f"Answer was downvoted but now changed to upvoted ->:{answer.question.title}:{answer.content}")
+                if request.user != answer.author:
+                    add_reputation(user_id=answer.author_id, rep_type='answer_upvote', change=40,
+                                   description=f"Answer was downvoted but now changed to upvoted ->:{answer.question.title}:{answer.content}")
             answer.save()
     except Vote.DoesNotExist:
         Vote.objects.create(answer=answer, user=request.user, vote_type=vote_type)
         if vote_type == "upvote":
             answer.vote_count += 1
-            add_reputation(user_id=answer.author_id, rep_type='answer_upvote', change=20,
-                           description=f"Answer upvoted ->:{answer.question.title}:{answer.content}")
+            if request.user != answer.author:
+                add_reputation(user_id=answer.author_id, rep_type='answer_upvote', change=20,
+                               description=f"Answer upvoted ->:{answer.question.title}:{answer.content}")
         elif vote_type == "downvote":
             answer.vote_count -= 1
-            add_reputation(user_id=answer.author_id, rep_type='answer_downvote', change=-20,
-                           description=f"Answer downvoted ->:{answer.question.title}:{answer.content}")
+            if request.user != answer.author:
+                add_reputation(user_id=answer.author_id, rep_type='answer_downvote', change=-20,
+                               description=f"Answer downvoted ->:{answer.question.title}:{answer.content}")
         answer.save()
     serializer = AnswerSerializer(answer)
     return Response(serializer.data, status=status.HTTP_200_OK)
@@ -328,38 +336,35 @@ def answer_vote(request,id):
 def answer_accept(request, id):
     try:
         answer = Answer.objects.get(id=id)
-        question = answer.question  # Получаем вопрос, к которому относится ответ
+        question = answer.question
 
-        # Проверка, что только автор вопроса может принимать ответ
         if request.user != question.author:
             return Response({'error': 'You are not the owner of this question'}, status=status.HTTP_403_FORBIDDEN)
 
         if answer.is_accepted:
-            # Отклонение ответа
             answer.is_accepted = False
             answer.save()
 
-            # Снижение репутации
-            add_reputation(
-                user_id=answer.author_id,
-                rep_type='answer_accepted',
-                change=-15,
-                description=f"Answer was unaccepted for question: {question.title}"
-            )
+            if answer.author != question.author:
+                add_reputation(
+                    user_id=answer.author_id,
+                    rep_type='answer_accepted',
+                    change=-15,
+                    description=f"Answer was unaccepted for question: {question.title}"
+                )
             serializer = AnswerSerializer(answer)
             return Response(serializer.data, status=status.HTTP_200_OK)
-
-        Answer.objects.filter(question=question, is_accepted=True).update(is_accepted=False)
 
         answer.is_accepted = True
         answer.save()
 
-        add_reputation(
-            user_id=answer.author_id,
-            rep_type='answer_accepted',
-            change=15,
-            description=f"Answer accepted for question: {question.title}"
-        )
+        if answer.author != question.author:
+            add_reputation(
+                user_id=answer.author_id,
+                rep_type='answer_accepted',
+                change=15,
+                description=f"Answer accepted for question: {question.title}"
+            )
 
         serializer = AnswerSerializer(answer)
         return Response(serializer.data, status=status.HTTP_200_OK)

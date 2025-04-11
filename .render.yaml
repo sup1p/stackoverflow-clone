@@ -1,6 +1,0 @@
-services:
-  - type: web
-    name: stackoverflow-backend
-    runtime: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: gunicorn StackOverflowCopy.wsgi:application
