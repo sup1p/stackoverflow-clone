@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from Post.models import Question, Answer, Vote, Tag
 from Post.pagination import CustomPageNumberPagination, TagCustomPageNumberPagination
 from Post.serializers import QuestionSerializer, AnswerSerializer
+from Post.tasks import update_question_list_cache
 from Post.utils import add_reputation
 
 @api_view(['GET', 'POST'])
@@ -21,6 +22,7 @@ def questions_list_and_create(request):
     key_raw = json.dumps(query_params, sort_keys=True)
     key_hash = hashlib.md5(key_raw.encode()).hexdigest()
     cache_key = f"question_list:{key_hash}"
+    print(key_hash)
 
     cached_response = cache.get(cache_key)
     if cached_response:
@@ -57,7 +59,7 @@ def questions_list_and_create(request):
         serializer = QuestionSerializer(paginated_queryset, many=True)
         paginated_response = paginator.get_paginated_response(serializer.data)
 
-        cache.set(cache_key, paginated_response.data, timeout=120)
+        cache.set(cache_key, paginated_response.data, timeout=60)
         return paginated_response
 
 
@@ -70,6 +72,7 @@ def questions_list_and_create(request):
 
         if serializer.is_valid():
             serializer.save(author=request.user)
+            update_question_list_cache.delay()
 
             return Response(serializer.data, status=201)
 
@@ -420,7 +423,7 @@ def tags_list(request):
         for tag in paginated_queryset
     ]
     paginated_response = paginator.get_paginated_response(results)
-    cache.set(cache_key, paginated_response.data, timeout=120)
+    cache.set(cache_key, paginated_response.data, timeout=60)
     return paginated_response
 
 

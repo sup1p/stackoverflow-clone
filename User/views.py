@@ -16,6 +16,7 @@ from Post.serializers import QuestionSerializer, AnswerSerializer
 from User.pagination import CustomPageNumberPagination
 from User.models import CustomUser, Reputation
 from User.serializers import UserRegistrationSerializer, UserSerializer, ReputationSerializer
+from User.tasks import update_users_list_cache, update_users_me_cache, update_users_details_cache
 
 
 @api_view(['POST'])
@@ -23,6 +24,10 @@ def register(request):
     serializer = UserRegistrationSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
+
+        print("user registered, start to update cache")
+        update_users_list_cache.delay()
+
         token, created = Token.objects.get_or_create(user=user)
         return Response({
             "token": token.key,
@@ -125,7 +130,7 @@ def user_list(request):
     paginated_queryset = paginator.paginate_queryset(queryset, request)
     serializer = UserSerializer(paginated_queryset, many=True)
     paginated_response = paginator.get_paginated_response(serializer.data)
-    cache.set(cache_key, paginated_response.data, timeout = 120)
+    cache.set(cache_key, paginated_response.data, timeout = 180)
     return paginated_response
 
 @api_view(['GET'])
@@ -135,7 +140,7 @@ def user_details(request,id):
     if cached_response:
         return Response(cached_response, status=status.HTTP_200_OK)
     try:
-        user = CustomUser.objects.get(pk = id)
+        user = CustomUser.objects.get(pk=id)
     except CustomUser.DoesNotExist:
         return Response({'error': 'Пользователь не найден'}, status=404)
 
@@ -186,6 +191,14 @@ def user_edit_get(request):
         if new_about is not None and new_about != '' and new_about:
             request_user.about = new_about
         request_user.save()
+        user_id = request.user.id
+        print("user changed data, updating users_list cache")
+        update_users_list_cache.delay()
+        print("user changed data, updating user_details cache ", user_id, type(user_id))
+        update_users_details_cache.delay(user_id)
+        print("user changed data, updating user_me cache ", user_id, type(user_id))
+        update_users_me_cache.delay(user_id)
+
         return Response({
             "id": request_user.id,
             "username": request_user.username,

@@ -4,4 +4,4 @@ __all__ = ['celery_app']
 
 #  running -> 1)"redis server"
 #             2)"python manage.py runserver"
-#             3)"celery -A myproject worker --loglevel-info"
+#             3)"celery -A StackOverflowCopy worker --loglevel=info --pool=solo"
