@@ -23,6 +23,8 @@ Stack Overflow Clone — platform for sharing questions and answers in IT and te
 - Python
 - Django Rest Framework
 - PostgreSQL
+- Redis
+- Celery
 
 ### Frontend:
 - Next.js
